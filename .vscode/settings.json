@@ -1,0 +1,8 @@
+{
+    "cmake.generator": "Ninja",
+    "cmake.configureOnOpen": true,
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.buildArgs": [],
+    "cmake.ctestArgs": [],
+    "commentTranslate.hover.enabled": true
+}
