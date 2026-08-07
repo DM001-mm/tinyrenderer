@@ -1,50 +1,65 @@
 #include <cmath>
+#include <fstream>
+#include <sstream>
+#include <string>
 #include "tgaimage.h"
 
-constexpr TGAColor white   = {255, 255, 255, 255}; // attention, BGRA order
-constexpr TGAColor green   = {  0, 255,   0, 255};
-constexpr TGAColor red     = {  0,   0, 255, 255};
-constexpr TGAColor blue    = {255, 128,  64, 255};
-constexpr TGAColor yellow  = {  0, 200, 255, 255};
+// ---- 声明 model.cpp 里的函数 ----
+void read_vertex(const std::string& filename);
+void project_and_save(const std::string& infilename,
+                      const std::string& outfilename,
+                      int width, int height);
 
-void line(int ax, int ay, int bx, int by, TGAImage &framebuffer, TGAColor color) {
-    bool steep = std::abs(ax-bx) < std::abs(ay-by);
-    if (steep) { // if the line is steep, we transpose the image
-        std::swap(ax, ay);
-        std::swap(bx, by);
-    }
-    if (ax>bx) { // make it left−to−right
-        std::swap(ax, bx);
-        std::swap(ay, by);
-    }
-    for (int x=ax; x<=bx; x++) {
-        float t = (x-ax) / static_cast<float>(bx-ax);
-        int y = std::round( ay + (by-ay)*t );
-        if (steep) // if transposed, de−transpose
+// ---- 画线算法 ----
+void line(int ax, int ay, int bx, int by, TGAImage& framebuffer, TGAColor color) {
+    bool steep = std::abs(ax - bx) < std::abs(ay - by);
+    if (steep) { std::swap(ax, ay); std::swap(bx, by); }
+    if (ax > bx) { std::swap(ax, bx); std::swap(ay, by); }
+
+    int y = ay;
+    int ierror = 0;
+    for (int x = ax; x <= bx; x++) {
+        if (steep)
             framebuffer.set(y, x, color);
         else
             framebuffer.set(x, y, color);
+
+        ierror += 2 * std::abs(by - ay);
+        if (ierror > bx - ax) {
+            y += by > ay ? 1 : -1;
+            ierror -= 2 * (bx - ax);
+        }
     }
 }
 
-int main(int argc, char** argv) {
-    constexpr int width  = 64;
-    constexpr int height = 64;
-    TGAImage framebuffer(width, height, TGAImage::RGB);
+//==================================================================
+// 主流程
+//==================================================================
+int main() {
+    // ---- 阶段1：3D → 2D，生成 lines.txt ----
+    read_vertex("obj/african_head/african_head.obj");
+    project_and_save("obj/african_head/african_head.obj", "lines.txt", 800, 800);
 
-    int ax =  7, ay =  3;
-    int bx = 12, by = 37;
-    int cx = 62, cy = 53;
+    // ---- 阶段2：读取 lines.txt，绘制 TGA ----
+    TGAImage framebuffer(800, 800, TGAImage::RGB);
 
-    line(ax, ay, bx, by, framebuffer, blue);
-    line(cx, cy, bx, by, framebuffer, green);
-    line(cx, cy, ax, ay, framebuffer, yellow);
-    line(ax, ay, cx, cy, framebuffer, red);
+    std::ifstream f("lines.txt");
+    if (!f) { printf("无法打开 lines.txt\n"); return 1; }
 
-    framebuffer.set(ax, ay, white);
-    framebuffer.set(bx, by, white);
-    framebuffer.set(cx, cy, white);
+    std::string str;
+    while (std::getline(f, str)) {
+        std::istringstream iss(str);
+        int x1, y1, x2, y2, r, g, b;
+        iss >> x1 >> y1 >> x2 >> y2 >> r >> g >> b;
+
+        // TGAColor 按 BGRA 顺序
+        line(x1, y1, x2, y2, framebuffer,
+             {static_cast<std::uint8_t>(b),
+              static_cast<std::uint8_t>(g),
+              static_cast<std::uint8_t>(r), 255});
+    }
 
     framebuffer.write_tga_file("framebuffer.tga");
+    printf("framebuffer.tga 已生成\n");
     return 0;
 }

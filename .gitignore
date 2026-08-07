@@ -1,4 +1,5 @@
 framebuffer.tga
+lines.txt
 build/
 *.exe
 .claude/
