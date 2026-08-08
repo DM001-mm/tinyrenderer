@@ -2,7 +2,15 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <algorithm>
+#include <vector>
 #include "tgaimage.h"
+
+constexpr TGAColor white  = {255, 255, 255, 255}; // attention, BGRA order
+constexpr TGAColor green  = {  0, 255,   0, 255};
+constexpr TGAColor red    = {  0,   0, 255, 255};
+constexpr TGAColor blue   = {255, 128,  64, 255};
+constexpr TGAColor yellow = {  0, 200, 255, 255};
 
 // ---- 声明 model.cpp 里的函数 ----
 void read_vertex(const std::string& filename);
@@ -32,19 +40,62 @@ void line(int ax, int ay, int bx, int by, TGAImage& framebuffer, TGAColor color)
     }
 }
 
+// ---- cmp 用于按 y 排序，y 相同按 x ----
+bool cmp(const std::pair<int,int>& a, const std::pair<int,int>& b) {
+    if (a.second != b.second) return a.second < b.second;
+    return a.first < b.first;
+}
+
+// ---- 2D 三角形光栅化（填色） ----
+void triangle(int ax, int ay, int bx, int by, int cx, int cy,
+              TGAImage& image, TGAColor color) {
+    // 将三个顶点按 y 从小到大排序
+    std::vector<std::pair<int,int>> pts;
+    pts.push_back(std::make_pair(ax, ay));
+    pts.push_back(std::make_pair(bx, by));
+    pts.push_back(std::make_pair(cx, cy));
+    std::sort(pts.begin(), pts.end(), cmp);
+
+    auto p1 = pts[0];  // y 最小
+    auto p2 = pts[1];  // y 中间
+    auto p3 = pts[2];  // y 最大
+
+    // 上半部分：y 从 p1.y 到 p2.y
+    if (p1.second != p2.second) {
+        for (int y = p1.second; y <= p2.second; y++) {
+            int x1 = p1.first + (y - p1.second) * (p3.first - p1.first) / (p3.second - p1.second);
+            int x2 = p1.first + (y - p1.second) * (p2.first - p1.first) / (p2.second - p1.second);
+            if (x1 > x2) std::swap(x1, x2);
+            line(x1, y, x2, y, image, color);
+        }
+    }
+
+    // 下半部分：y 从 p2.y 到 p3.y
+    if (p2.second != p3.second) {
+        for (int y = p2.second; y <= p3.second; y++) {
+            int x1 = p1.first + (y - p1.second) * (p3.first - p1.first) / (p3.second - p1.second);
+            int x2 = p2.first + (y - p2.second) * (p3.first - p2.first) / (p3.second - p2.second);
+            if (x1 > x2) std::swap(x1, x2);
+            line(x1, y, x2, y, image, color);
+        }
+    }
+}
+
 //==================================================================
 // 主流程
 //==================================================================
 int main() {
-    // ---- 阶段1：3D → 2D，生成 lines.txt ----
+    TGAImage framebuffer(800, 800, TGAImage::RGB);
+
+    // ---- test triangle ----
+    triangle(100, 100, 700, 150, 300, 650, framebuffer, green);
+
+    // ---- 3D wireframe ----
     read_vertex("obj/african_head/african_head.obj");
     project_and_save("obj/african_head/african_head.obj", "lines.txt", 800, 800);
 
-    // ---- 阶段2：读取 lines.txt，绘制 TGA ----
-    TGAImage framebuffer(800, 800, TGAImage::RGB);
-
     std::ifstream f("lines.txt");
-    if (!f) { printf("无法打开 lines.txt\n"); return 1; }
+    if (!f) { printf("Cannot open lines.txt\n"); return 1; }
 
     std::string str;
     while (std::getline(f, str)) {
@@ -52,7 +103,6 @@ int main() {
         int x1, y1, x2, y2, r, g, b;
         iss >> x1 >> y1 >> x2 >> y2 >> r >> g >> b;
 
-        // TGAColor 按 BGRA 顺序
         line(x1, y1, x2, y2, framebuffer,
              {static_cast<std::uint8_t>(b),
               static_cast<std::uint8_t>(g),

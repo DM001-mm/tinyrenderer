@@ -23,22 +23,22 @@ void read_vertex(const std::string& filename) {
             vz.push_back(z);
         }
     }
-    std::cout<<"have already gotten"<<vx.size()<<" vertixes"<<std::endl;
+    std::cout<<"have already gotten"<<vx.size()<<" vertices"<<std::endl;
     return ;
 }
 
 void project_and_save(const std::string& infilename, const std::string& outfilename, int width, int height){
     std::ifstream in(infilename);
     std::ofstream out(outfilename);
-    if(!in) {std::cout<<"cnmd infile"<<infilename<<" can't open!"<<std::endl; return;}
-    if(!out) {std::cout<<"cnmd outfile"<<outfilename<<" can't open!"<<std::endl;return ;}
+    if(!in) {std::cout<<"Cannot open input file:"<<infilename<<" can't open!"<<std::endl; return;}
+    if(!out) {std::cout<<"Cannot open output file:"<<outfilename<<" can't open!"<<std::endl;return ;}
     std::string line;
     while(std::getline(in,line)){
         if(!(line[0]=='f'&&line[1]==' ')) continue ;
         std::string _,i1,i2,i3;
         std::istringstream iss(line);
         iss>>_>>i1>>i2>>i3;
-        //透明
+        //
         int _i1 = std::stoi(i1)-1;
         int _i2 = std::stoi(i2)-1; 
         int _i3 = std::stoi(i3)-1;
