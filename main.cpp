@@ -47,7 +47,7 @@ bool cmp(const std::pair<int,int>& a, const std::pair<int,int>& b) {
 }
 
 // ---- 2D 三角形光栅化（填色） ----
-void triangle(int ax, int ay, int bx, int by, int cx, int cy,
+void triangle_Scanline_Rasterization(int ax, int ay, int bx, int by, int cx, int cy,
               TGAImage& image, TGAColor color) {
     // 将三个顶点按 y 从小到大排序
     std::vector<std::pair<int,int>> pts;
@@ -81,6 +81,21 @@ void triangle(int ax, int ay, int bx, int by, int cx, int cy,
     }
 }
 
+void triangle_Scanline_Rasterization(int ax, int ay, int bx, int by, int cx, int cy,TGAImage& image, TGAColor color) {
+    int lx = std::min({ax,bx,cx});
+    int rx = std::max({ax,bx,cx});
+    int ly = std::min({ax,bx,cx});
+    int hy = std::max({ay,by,cy});
+    // 确定边框范围
+    #pragma omp parallel for num_threads(4) // 这个 语句 也是相当神奇的
+    
+    for(int ix = lx;ix<=rx;ix++){
+        for(int iy=ly;iy<=hy;iy++){
+            image.set(ix,iy,color);
+        }
+    }
+}
+// void triangle_
 //==================================================================
 // 主流程
 //==================================================================
