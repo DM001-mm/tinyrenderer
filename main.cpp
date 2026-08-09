@@ -80,18 +80,23 @@ void triangle_Scanline_Rasterization(int ax, int ay, int bx, int by, int cx, int
         }
     }
 }
-
-void triangle_Scanline_Rasterization(int ax, int ay, int bx, int by, int cx, int cy,TGAImage& image, TGAColor color) {
+// 有三角形 三个点 可以默认设置成 a,b,c 那么，只需要通过外积的正负号的一致性 就可以判断是否 是三角形内部的点 ,外积的时候使用外部 逆时针
+bool judge(int x,int y,int ax,int ay,int bx,int by,int cx,int cy){
+    int r1 = (x-ax)*(by-ay)-(y-ay)*(bx-ax);
+    int r2 = (x-bx)*(cy-by) -(y-by)*(cx-bx);
+    int r3 = (x-cx)*(ay-cy)-(y-cy)*(ax-cx);
+    return (r1>=0&&r2>=0&&r3>=0)||(r1<=0&&r2<=0&&r3<=0);   
+}
+void triangle(int ax, int ay, int bx, int by, int cx, int cy,TGAImage& image, TGAColor color) {
     int lx = std::min({ax,bx,cx});
     int rx = std::max({ax,bx,cx});
-    int ly = std::min({ax,bx,cx});
+    int ly = std::min({ay,by,cy});
     int hy = std::max({ay,by,cy});
     // 确定边框范围
     #pragma omp parallel for num_threads(4) // 这个 语句 也是相当神奇的
-    
     for(int ix = lx;ix<=rx;ix++){
         for(int iy=ly;iy<=hy;iy++){
-            image.set(ix,iy,color);
+            if(judge(ix,iy,ax,ay,bx,by,cx,cy)) image.set(ix,iy,color);
         }
     }
 }
@@ -106,23 +111,23 @@ int main() {
     triangle(100, 100, 700, 150, 300, 650, framebuffer, green);
 
     // ---- 3D wireframe ----
-    read_vertex("obj/african_head/african_head.obj");
-    project_and_save("obj/african_head/african_head.obj", "lines.txt", 800, 800);
+    // read_vertex("obj/african_head/african_head.obj");
+    // project_and_save("obj/african_head/african_head.obj", "lines.txt", 800, 800);
 
-    std::ifstream f("lines.txt");
-    if (!f) { printf("Cannot open lines.txt\n"); return 1; }
+    // std::ifstream f("lines.txt");
+    // if (!f) { printf("Cannot open lines.txt\n"); return 1; }
 
-    std::string str;
-    while (std::getline(f, str)) {
-        std::istringstream iss(str);
-        int x1, y1, x2, y2, r, g, b;
-        iss >> x1 >> y1 >> x2 >> y2 >> r >> g >> b;
+    // std::string str;
+    // while (std::getline(f, str)) {
+    //     std::istringstream iss(str);
+    //     int x1, y1, x2, y2, r, g, b;
+    //     iss >> x1 >> y1 >> x2 >> y2 >> r >> g >> b;
 
-        line(x1, y1, x2, y2, framebuffer,
-             {static_cast<std::uint8_t>(b),
-              static_cast<std::uint8_t>(g),
-              static_cast<std::uint8_t>(r), 255});
-    }
+    //     line(x1, y1, x2, y2, framebuffer,
+    //          {static_cast<std::uint8_t>(b),
+    //           static_cast<std::uint8_t>(g),
+    //           static_cast<std::uint8_t>(r), 255});
+    // }
 
     framebuffer.write_tga_file("framebuffer.tga");
     printf("framebuffer.tga 已生成\n");
